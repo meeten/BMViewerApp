@@ -60,4 +60,7 @@ dependencies {
 
     // coil
     implementation(libs.coil.compose)
+
+    //viewModel
+    implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
 }
