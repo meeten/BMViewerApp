@@ -1,4 +1,4 @@
-package com.example.bmviewerapp
+package com.example.bmviewerapp.presentation.image
 
 import android.content.Context
 import android.graphics.Bitmap
