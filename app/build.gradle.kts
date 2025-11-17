@@ -63,4 +63,7 @@ dependencies {
 
     //viewModel
     implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
+
+    //navigation
+    implementation(libs.androidx.navigation.compose)
 }
