@@ -1,5 +1,3 @@
-@file:JvmName("EditToolScreenKt")
-
 package com.example.bmviewerapp.presentation.image
 
 import android.net.Uri
