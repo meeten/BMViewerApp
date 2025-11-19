@@ -1,12 +1,12 @@
+@file:JvmName("EditToolScreenKt")
+
 package com.example.bmviewerapp.presentation.image
 
 import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
@@ -28,18 +28,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bmviewerapp.R
 import com.example.bmviewerapp.ui.theme.LightBlue
 import com.example.bmviewerapp.ui.theme.NavyBlue
@@ -47,12 +41,6 @@ import com.example.bmviewerapp.ui.theme.NavyBlue
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageEditorScreen(imageUri: Uri, onBackClickListener: () -> Unit) {
-    val viewModel: BitmapViewModel = viewModel()
-
-    val bitmap = viewModel.parseBmpFromUri(LocalContext.current, imageUri)
-    val invertBitmap = viewModel.invertBitmapColors(bitmap)
-    val imageBitmap = invertBitmap?.asImageBitmap() ?: ImageBitmap(width = 1, height = 1)
-
     var isShowMoreMenu by remember { mutableStateOf(false) }
     var selectedTool by remember { mutableStateOf(EditTool.HISTOGRAM) }
     Scaffold(
@@ -128,50 +116,36 @@ fun ImageEditorScreen(imageUri: Uri, onBackClickListener: () -> Unit) {
             }
         }
     ) {
-        DropdownMenu(
-            expanded = isShowMoreMenu,
-            onDismissRequest = { isShowMoreMenu = false },
-            offset = DpOffset(x = (-10).dp, y = (-8).dp)
-        ) {
-            EditTool.entries
-                .filter { !it.isMain }
-                .forEach { editTool ->
-                    DropdownMenuItem(
-                        onClick = {
-                            selectedTool = editTool
-                            isShowMoreMenu = false
-                        },
-                        text = { Text(text = editTool.title) },
-                        trailingIcon = {
-                            Icon(
-                                painter = painterResource(editTool.iconRes),
-                                contentDescription = null
-                            )
-                        }
-                    )
-                }
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(it)
-                .padding(16.dp)
-        )
-        {
-            Image(
-                bitmap = imageBitmap,
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(shape = RoundedCornerShape(16.dp)),
-                contentScale = ContentScale.FillWidth
-            )
+        ) {
+            DropdownMenu(
+                expanded = isShowMoreMenu,
+                onDismissRequest = { isShowMoreMenu = false },
+                offset = DpOffset(x = (-10).dp, y = (-8).dp)
+            ) {
+                EditTool.entries
+                    .filter { !it.isMain }
+                    .forEach { editTool ->
+                        DropdownMenuItem(
+                            onClick = {
+                                selectedTool = editTool
+                                isShowMoreMenu = false
+                            },
+                            text = { Text(text = editTool.title) },
+                            trailingIcon = {
+                                Icon(
+                                    painter = painterResource(editTool.iconRes),
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                    }
+            }
+
+            EditToolScreen(imageUri, selectedTool)
         }
     }
-}
-
-@Composable
-fun AdvancedFunctionality() {
-
 }
