@@ -12,3 +12,7 @@ val Pink40 = Color(0xFF7D5260)
 
 val LightBlue = Color(0xFF1B7EE3)
 val NavyBlue = Color(0xFF0D47A1)
+val SliderBlue = Color(0xFF2196F3)    // Основной синий для трека
+val SliderGray = Color(0xFFBDBDBD)    // Неактивная часть трека
+val SliderThumb = Color(0xFF1976D2)   // Бегунок
+val SliderTrack = Color(0xFFE3F2FD)   // Фон трека
