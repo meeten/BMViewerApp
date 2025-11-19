@@ -49,10 +49,8 @@ fun EditToolScreen(imageUri: Uri, selectedTool: EditTool) {
     val originalBitmap = remember { mutableStateOf(viewModel.parseBmpFromUri(context, imageUri)) }
     val previewBitmap = remember { mutableStateOf(originalBitmap.value) }
 
-    // Добавляем состояние для гистограммы
     val histogramData = remember { mutableStateOf<List<Int>>(emptyList()) }
 
-    // Вычисляем гистограмму при изменении bitmap
     LaunchedEffect(previewBitmap.value) {
         previewBitmap.value?.let { bitmap ->
             histogramData.value = viewModel.calculateHistogram(bitmap)
@@ -69,7 +67,6 @@ fun EditToolScreen(imageUri: Uri, selectedTool: EditTool) {
         var brightness by remember { mutableFloatStateOf(0.0f) }
         var contrast by remember { mutableFloatStateOf(1.25f) }
 
-        // Добавляем состояния для коррекции гистограммы
         var offsetBottom by remember { mutableFloatStateOf(0f) }
         var offsetTop by remember { mutableFloatStateOf(0f) }
 
