@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -64,6 +65,7 @@ fun EditToolScreen(imageUri: Uri, selectedTool: EditTool) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        //TODO: вынести в отдельный класс все переменные, связанные с фильтрами
         var brightness by remember { mutableFloatStateOf(0.0f) }
         var contrast by remember { mutableFloatStateOf(1.25f) }
 
@@ -84,7 +86,6 @@ fun EditToolScreen(imageUri: Uri, selectedTool: EditTool) {
 
             when (selectedTool) {
                 EditTool.HISTOGRAM -> {
-                    // Отображаем гистограмму
                     AnimatedHistogramView(
                         histogramData = histogramData.value,
                         modifier = Modifier
@@ -159,27 +160,6 @@ fun EditToolScreen(imageUri: Uri, selectedTool: EditTool) {
                     }
                 }
 
-                EditTool.SHARP -> {
-                    LaunchedEffect(Unit) {
-                        previewBitmap.value = viewModel.sharpenBitmap(originalBitmap.value)
-                        originalBitmap.value = previewBitmap.value
-                    }
-                }
-
-                EditTool.EMBOSS -> {
-                    LaunchedEffect(Unit) {
-                        previewBitmap.value = viewModel.embossBitmap(originalBitmap.value)
-                        originalBitmap.value = previewBitmap.value
-                    }
-                }
-
-                EditTool.CONTOUR -> {
-                    LaunchedEffect(Unit) {
-                        previewBitmap.value = viewModel.contourBitmap(originalBitmap.value)
-                        originalBitmap.value = previewBitmap.value
-                    }
-                }
-
                 EditTool.BRIGHTNESS -> {
                     LaunchedEffect(brightness, contrast) {
                         previewBitmap.value = originalBitmap.value?.let { original ->
@@ -233,16 +213,37 @@ fun EditToolScreen(imageUri: Uri, selectedTool: EditTool) {
                     )
                 }
 
-                EditTool.BLUR -> {
-                    LaunchedEffect(Unit) {
-                        previewBitmap.value = viewModel.blurBitmap(originalBitmap.value)
+                EditTool.INVERT_COLORS -> {
+                    FilterButton("Invert") {
+                        previewBitmap.value = viewModel.invertBitmapColors((originalBitmap.value))
                         originalBitmap.value = previewBitmap.value
                     }
                 }
 
-                EditTool.INVERT_COLORS -> {
-                    LaunchedEffect(Unit) {
-                        previewBitmap.value = viewModel.invertBitmapColors(originalBitmap.value)
+                EditTool.SHARP -> {
+                    FilterButton("Sharpen") {
+                        previewBitmap.value = viewModel.sharpenBitmap(originalBitmap.value)
+                        originalBitmap.value = previewBitmap.value
+                    }
+                }
+
+                EditTool.EMBOSS -> {
+                    FilterButton("Emboss") {
+                        previewBitmap.value = viewModel.embossBitmap(originalBitmap.value)
+                        originalBitmap.value = previewBitmap.value
+                    }
+                }
+
+                EditTool.CONTOUR -> {
+                    FilterButton("Contour") {
+                        previewBitmap.value = viewModel.contourBitmap(originalBitmap.value)
+                        originalBitmap.value = previewBitmap.value
+                    }
+                }
+
+                EditTool.BLUR -> {
+                    FilterButton("Blur") {
+                        previewBitmap.value = viewModel.blurBitmap(originalBitmap.value)
                         originalBitmap.value = previewBitmap.value
                     }
                 }
@@ -264,6 +265,22 @@ fun EditToolScreen(imageUri: Uri, selectedTool: EditTool) {
         ) {
             Text(
                 text = "Reset",
+                fontSize = 20.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun FilterButton(title: String, onClick: () -> Unit) {
+    Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxHeight()) {
+        Button(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = LightBlue)
+        ) {
+            Text(
+                text = title,
                 fontSize = 20.sp
             )
         }
