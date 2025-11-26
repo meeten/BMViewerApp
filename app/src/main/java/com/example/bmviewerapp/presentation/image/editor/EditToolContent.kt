@@ -1,4 +1,4 @@
-package com.example.bmviewerapp.presentation.image
+package com.example.bmviewerapp.presentation.image.editor
 
 import android.net.Uri
 import androidx.compose.foundation.Image
@@ -36,6 +36,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.bmviewerapp.presentation.image.analysis.AnimatedHistogramView
+import com.example.bmviewerapp.presentation.image.analysis.HistogramViewModel
 import com.example.bmviewerapp.ui.theme.LightBlue
 import com.example.bmviewerapp.ui.theme.SliderBlue
 import com.example.bmviewerapp.ui.theme.SliderGray
@@ -43,18 +45,20 @@ import com.example.bmviewerapp.ui.theme.SliderThumb
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditToolScreen(imageUri: Uri, selectedTool: EditTool) {
-    val viewModel: BitmapViewModel = viewModel()
+fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
+    val bitmapViewModel: BitmapViewModel = viewModel()
+    val histogramViewModel: HistogramViewModel = viewModel()
     val context = LocalContext.current
 
-    val originalBitmap = remember { mutableStateOf(viewModel.parseBmpFromUri(context, imageUri)) }
+    val originalBitmap =
+        remember { mutableStateOf(bitmapViewModel.parseBmpFromUri(context, imageUri)) }
     val previewBitmap = remember { mutableStateOf(originalBitmap.value) }
 
     val histogramData = remember { mutableStateOf<List<Int>>(emptyList()) }
 
     LaunchedEffect(previewBitmap.value) {
         previewBitmap.value?.let { bitmap ->
-            histogramData.value = viewModel.calculateHistogram(bitmap)
+            histogramData.value = histogramViewModel.calculateHistogram(bitmap)
         }
     }
 
@@ -86,6 +90,29 @@ fun EditToolScreen(imageUri: Uri, selectedTool: EditTool) {
 
             when (selectedTool) {
                 EditTool.HISTOGRAM -> {
+                    LaunchedEffect(offsetBottom, offsetTop, selectedTool) {
+                        if (selectedTool == EditTool.HISTOGRAM) {
+                            previewBitmap.value = originalBitmap.value?.let { original ->
+                                var result = original
+                                if (offsetBottom != 0f) {
+                                    result = bitmapViewModel.histogramCorrectionBitmap(
+                                        result,
+                                        offsetBottom.toInt(),
+                                        offsetTop.toInt()
+                                    )
+                                }
+                                if (offsetTop != 0f) {
+                                    result = bitmapViewModel.histogramCorrectionBitmap(
+                                        result,
+                                        offsetBottom.toInt(),
+                                        offsetTop.toInt()
+                                    )
+                                }
+                                result
+                            }
+                        }
+                    }
+
                     AnimatedHistogramView(
                         histogramData = histogramData.value,
                         modifier = Modifier
@@ -103,11 +130,6 @@ fun EditToolScreen(imageUri: Uri, selectedTool: EditTool) {
                             value = offsetBottom,
                             onValueChange = {
                                 offsetBottom = it
-                                previewBitmap.value = viewModel.histogramCorrectionBitmap(
-                                    originalBitmap.value,
-                                    offsetBottom.toInt(),
-                                    offsetTop.toInt()
-                                )
                             },
                             valueRange = 0f..100f,
                             modifier = Modifier.weight(1f),
@@ -135,11 +157,7 @@ fun EditToolScreen(imageUri: Uri, selectedTool: EditTool) {
                             value = offsetTop,
                             onValueChange = {
                                 offsetTop = it
-                                previewBitmap.value = viewModel.histogramCorrectionBitmap(
-                                    originalBitmap.value,
-                                    offsetBottom.toInt(),
-                                    offsetTop.toInt()
-                                )
+
                             },
                             valueRange = 0f..100f,
                             modifier = Modifier.weight(1f),
@@ -161,16 +179,18 @@ fun EditToolScreen(imageUri: Uri, selectedTool: EditTool) {
                 }
 
                 EditTool.BRIGHTNESS -> {
-                    LaunchedEffect(brightness, contrast) {
-                        previewBitmap.value = originalBitmap.value?.let { original ->
-                            var result = original
-                            if (brightness != 0f) {
-                                result = viewModel.brightnessBitmap(result, brightness)
+                    LaunchedEffect(brightness, contrast, selectedTool) {
+                        if (selectedTool == EditTool.BRIGHTNESS) {
+                            previewBitmap.value = originalBitmap.value?.let { original ->
+                                var result = original
+                                if (brightness != 0f) {
+                                    result = bitmapViewModel.brightnessBitmap(result, brightness)
+                                }
+                                if (contrast != 1.25f) {
+                                    result = bitmapViewModel.contrastBitmap(result, contrast)
+                                }
+                                result
                             }
-                            if (contrast != 1.25f) {
-                                result = viewModel.contrastBitmap(result, contrast)
-                            }
-                            result
                         }
                     }
 
@@ -215,35 +235,36 @@ fun EditToolScreen(imageUri: Uri, selectedTool: EditTool) {
 
                 EditTool.INVERT_COLORS -> {
                     FilterButton("Invert") {
-                        previewBitmap.value = viewModel.invertBitmapColors((originalBitmap.value))
+                        previewBitmap.value =
+                            bitmapViewModel.invertBitmapColors((originalBitmap.value))
                         originalBitmap.value = previewBitmap.value
                     }
                 }
 
                 EditTool.SHARP -> {
                     FilterButton("Sharpen") {
-                        previewBitmap.value = viewModel.sharpenBitmap(originalBitmap.value)
+                        previewBitmap.value = bitmapViewModel.sharpenBitmap(originalBitmap.value)
                         originalBitmap.value = previewBitmap.value
                     }
                 }
 
                 EditTool.EMBOSS -> {
                     FilterButton("Emboss") {
-                        previewBitmap.value = viewModel.embossBitmap(originalBitmap.value)
+                        previewBitmap.value = bitmapViewModel.embossBitmap(originalBitmap.value)
                         originalBitmap.value = previewBitmap.value
                     }
                 }
 
                 EditTool.CONTOUR -> {
                     FilterButton("Contour") {
-                        previewBitmap.value = viewModel.contourBitmap(originalBitmap.value)
+                        previewBitmap.value = bitmapViewModel.contourBitmap(originalBitmap.value)
                         originalBitmap.value = previewBitmap.value
                     }
                 }
 
                 EditTool.BLUR -> {
                     FilterButton("Blur") {
-                        previewBitmap.value = viewModel.blurBitmap(originalBitmap.value)
+                        previewBitmap.value = bitmapViewModel.blurBitmap(originalBitmap.value)
                         originalBitmap.value = previewBitmap.value
                     }
                 }
@@ -252,7 +273,7 @@ fun EditToolScreen(imageUri: Uri, selectedTool: EditTool) {
 
         Button(
             onClick = {
-                val original = viewModel.parseBmpFromUri(context, imageUri)
+                val original = bitmapViewModel.parseBmpFromUri(context, imageUri)
                 originalBitmap.value = original
                 previewBitmap.value = original
                 brightness = 0.0f

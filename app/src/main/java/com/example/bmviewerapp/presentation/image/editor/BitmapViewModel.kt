@@ -1,4 +1,4 @@
-package com.example.bmviewerapp.presentation.image
+package com.example.bmviewerapp.presentation.image.editor
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -355,9 +355,11 @@ class BitmapViewModel : ViewModel() {
         return result
     }
 
-    fun histogramCorrectionBitmap(originalBitmap: Bitmap?, offsetBottom: Int, offsetTop: Int): Bitmap? {
-        if (originalBitmap == null) return null
-
+    fun histogramCorrectionBitmap(
+        originalBitmap: Bitmap,
+        offsetBottom: Int,
+        offsetTop: Int
+    ): Bitmap {
         val result = originalBitmap.copy(Bitmap.Config.ARGB_8888, true)
         val pixels = IntArray(result.width * result.height)
         result.getPixels(pixels, 0, result.width, 0, 0, result.width, result.height)
@@ -387,7 +389,6 @@ class BitmapViewModel : ViewModel() {
             }
         }
 
-        // Применяем преобразование к каждому пикселю
         for (i in pixels.indices) {
             val alpha = Color.alpha(pixels[i])
             val red = Color.red(pixels[i])
@@ -404,24 +405,5 @@ class BitmapViewModel : ViewModel() {
 
         result.setPixels(pixels, 0, result.width, 0, 0, result.width, result.height)
         return result
-    }
-
-    fun calculateHistogram(bitmap: Bitmap?): List<Int> {
-        if (bitmap == null) return List(256) { 0 }
-
-        val histogram = IntArray(256) { 0 }
-        val pixels = IntArray(bitmap.width * bitmap.height)
-
-        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-
-        for (pixel in pixels) {
-            // Вычисляем яркость по формуле luminance
-            val luminance = (Color.red(pixel) * 0.299f +
-                    Color.green(pixel) * 0.587f +
-                    Color.blue(pixel) * 0.114f).toInt()
-            histogram[luminance.coerceIn(0, 255)]++
-        }
-
-        return histogram.toList()
     }
 }

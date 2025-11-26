@@ -33,6 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.example.bmviewerapp.R
+import com.example.bmviewerapp.presentation.image.editor.EditTool
+import com.example.bmviewerapp.presentation.image.editor.EditToolContent
 import com.example.bmviewerapp.ui.theme.LightBlue
 import com.example.bmviewerapp.ui.theme.NavyBlue
 
@@ -143,7 +145,7 @@ fun ImageEditorScreen(imageUri: Uri, onBackClickListener: () -> Unit) {
                     }
             }
 
-            EditToolScreen(imageUri, selectedTool)
+            EditToolContent(imageUri, selectedTool)
         }
     }
 }

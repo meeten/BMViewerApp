@@ -1,4 +1,4 @@
-package com.example.bmviewerapp.presentation.image
+package com.example.bmviewerapp.presentation.image.analysis
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState

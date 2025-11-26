@@ -1,4 +1,4 @@
-package com.example.bmviewerapp.presentation.image
+package com.example.bmviewerapp.presentation.image.editor
 
 import com.example.bmviewerapp.R
 
