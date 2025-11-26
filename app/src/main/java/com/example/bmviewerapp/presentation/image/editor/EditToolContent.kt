@@ -1,5 +1,6 @@
 package com.example.bmviewerapp.presentation.image.editor
 
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
@@ -48,14 +49,28 @@ import com.example.bmviewerapp.ui.theme.SliderThumb
 fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
     val bitmapViewModel: BitmapViewModel = viewModel()
     val histogramViewModel: HistogramViewModel = viewModel()
+    val filterStateViewModel: FilterStateViewModel = viewModel()
     val context = LocalContext.current
 
     val originalBitmap =
         remember { mutableStateOf(bitmapViewModel.parseBmpFromUri(context, imageUri)) }
     val previewBitmap = remember { mutableStateOf(originalBitmap.value) }
 
-    val histogramData = remember { mutableStateOf<List<Int>>(emptyList()) }
+    LaunchedEffect(
+        filterStateViewModel.filterParams,
+        originalBitmap.value
+    ) {
+        previewBitmap.value = originalBitmap.value?.let { original ->
+            val result = bitmapViewModel.applyAllFilters(
+                filterParams = filterStateViewModel.filterParams,
+                originalBitmap = original
+            )
 
+            result
+        }
+    }
+
+    val histogramData = remember { mutableStateOf<List<Int>>(emptyList()) }
     LaunchedEffect(previewBitmap.value) {
         previewBitmap.value?.let { bitmap ->
             histogramData.value = histogramViewModel.calculateHistogram(bitmap)
@@ -69,13 +84,6 @@ fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        //TODO: вынести в отдельный класс все переменные, связанные с фильтрами
-        var brightness by remember { mutableFloatStateOf(0.0f) }
-        var contrast by remember { mutableFloatStateOf(1.25f) }
-
-        var offsetBottom by remember { mutableFloatStateOf(0f) }
-        var offsetTop by remember { mutableFloatStateOf(0f) }
-
         Column(modifier = Modifier.weight(1f)) {
             Image(
                 bitmap = imageBitmap,
@@ -90,29 +98,6 @@ fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
 
             when (selectedTool) {
                 EditTool.HISTOGRAM -> {
-                    LaunchedEffect(offsetBottom, offsetTop, selectedTool) {
-                        if (selectedTool == EditTool.HISTOGRAM) {
-                            previewBitmap.value = originalBitmap.value?.let { original ->
-                                var result = original
-                                if (offsetBottom != 0f) {
-                                    result = bitmapViewModel.histogramCorrectionBitmap(
-                                        result,
-                                        offsetBottom.toInt(),
-                                        offsetTop.toInt()
-                                    )
-                                }
-                                if (offsetTop != 0f) {
-                                    result = bitmapViewModel.histogramCorrectionBitmap(
-                                        result,
-                                        offsetBottom.toInt(),
-                                        offsetTop.toInt()
-                                    )
-                                }
-                                result
-                            }
-                        }
-                    }
-
                     AnimatedHistogramView(
                         histogramData = histogramData.value,
                         modifier = Modifier
@@ -127,9 +112,9 @@ fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Slider(
-                            value = offsetBottom,
+                            value = filterStateViewModel.filterParams.histogramOffsetTop,
                             onValueChange = {
-                                offsetBottom = it
+                                filterStateViewModel.updateOffsetTop(it)
                             },
                             valueRange = 0f..100f,
                             modifier = Modifier.weight(1f),
@@ -142,7 +127,7 @@ fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
                             )
                         )
                         Text(
-                            text = "${offsetBottom.toInt()}",
+                            text = "${filterStateViewModel.filterParams.histogramOffsetTop.toInt()}",
                             modifier = Modifier.width(40.dp),
                             fontSize = 16.sp,
                             textAlign = TextAlign.Center
@@ -154,9 +139,9 @@ fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Slider(
-                            value = offsetTop,
+                            value = filterStateViewModel.filterParams.histogramOffsetBottom,
                             onValueChange = {
-                                offsetTop = it
+                                filterStateViewModel.updateOffsetBottom(it)
 
                             },
                             valueRange = 0f..100f,
@@ -170,7 +155,7 @@ fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
                             )
                         )
                         Text(
-                            text = "${offsetTop.toInt()}",
+                            text = "${filterStateViewModel.filterParams.histogramOffsetBottom.toInt()}",
                             modifier = Modifier.width(40.dp),
                             fontSize = 16.sp,
                             textAlign = TextAlign.Center
@@ -179,29 +164,14 @@ fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
                 }
 
                 EditTool.BRIGHTNESS -> {
-                    LaunchedEffect(brightness, contrast, selectedTool) {
-                        if (selectedTool == EditTool.BRIGHTNESS) {
-                            previewBitmap.value = originalBitmap.value?.let { original ->
-                                var result = original
-                                if (brightness != 0f) {
-                                    result = bitmapViewModel.brightnessBitmap(result, brightness)
-                                }
-                                if (contrast != 1.25f) {
-                                    result = bitmapViewModel.contrastBitmap(result, contrast)
-                                }
-                                result
-                            }
-                        }
-                    }
-
                     Text(
                         text = "Brightness",
                         modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
                         fontSize = 16.sp
                     )
                     Slider(
-                        value = brightness,
-                        onValueChange = { brightness = it },
+                        value = filterStateViewModel.filterParams.brightness,
+                        onValueChange = { filterStateViewModel.updateBrightness(it) },
                         valueRange = -1.0f..1.0f,
                         modifier = Modifier.fillMaxWidth(),
                         colors = SliderDefaults.colors(
@@ -219,8 +189,8 @@ fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
                         fontSize = 16.sp
                     )
                     Slider(
-                        value = contrast,
-                        onValueChange = { contrast = it },
+                        value = filterStateViewModel.filterParams.contrast,
+                        onValueChange = { filterStateViewModel.updateContrast(it) },
                         valueRange = 0.5f..2.0f,
                         modifier = Modifier.fillMaxWidth(),
                         colors = SliderDefaults.colors(
@@ -243,7 +213,8 @@ fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
 
                 EditTool.SHARP -> {
                     FilterButton("Sharpen") {
-                        previewBitmap.value = bitmapViewModel.sharpenBitmap(originalBitmap.value)
+                        previewBitmap.value =
+                            bitmapViewModel.sharpenBitmap(originalBitmap.value)
                         originalBitmap.value = previewBitmap.value
                     }
                 }
@@ -257,14 +228,16 @@ fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
 
                 EditTool.CONTOUR -> {
                     FilterButton("Contour") {
-                        previewBitmap.value = bitmapViewModel.contourBitmap(originalBitmap.value)
+                        previewBitmap.value =
+                            bitmapViewModel.contourBitmap(originalBitmap.value)
                         originalBitmap.value = previewBitmap.value
                     }
                 }
 
                 EditTool.BLUR -> {
                     FilterButton("Blur") {
-                        previewBitmap.value = bitmapViewModel.blurBitmap(originalBitmap.value)
+                        previewBitmap.value =
+                            bitmapViewModel.blurBitmap(originalBitmap.value)
                         originalBitmap.value = previewBitmap.value
                     }
                 }
@@ -276,10 +249,7 @@ fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
                 val original = bitmapViewModel.parseBmpFromUri(context, imageUri)
                 originalBitmap.value = original
                 previewBitmap.value = original
-                brightness = 0.0f
-                contrast = 1.25f
-                offsetBottom = 0f
-                offsetTop = 0f
+                filterStateViewModel.resetAll()
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = LightBlue)

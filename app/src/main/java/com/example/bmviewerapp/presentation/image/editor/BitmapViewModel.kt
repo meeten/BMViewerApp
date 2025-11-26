@@ -9,6 +9,36 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 
 class BitmapViewModel : ViewModel() {
+    fun applyAllFilters(
+        filterParams: ImageFilterParams,
+        originalBitmap: Bitmap
+    ): Bitmap {
+        var result = originalBitmap
+
+        val offsetTop = filterParams.histogramOffsetBottom
+        val offsetBottom = filterParams.histogramOffsetTop
+        val brightness = filterParams.brightness
+        val contrast = filterParams.contrast
+
+        if (offsetBottom != 0.0f || offsetTop != 0.0f) {
+            result = histogramCorrectionBitmap(
+                result,
+                offsetBottom.toInt(),
+                offsetTop.toInt()
+            )
+        }
+
+        if (brightness != 0.0f) {
+            result = brightnessBitmap(result, brightness)
+        }
+
+        if (contrast != 1.25f) {
+            result = contrastBitmap(result, contrast)
+        }
+
+        return result
+    }
+
     fun parseBmpFromUri(context: Context, uri: Uri): Bitmap? {
         return try {
             context.contentResolver.openInputStream(uri)?.use { inputStream ->
