@@ -21,11 +21,8 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bmviewerapp.presentation.image.analysis.AnimatedHistogramView
 import com.example.bmviewerapp.presentation.image.analysis.HistogramViewModel
+import com.example.bmviewerapp.presentation.image.filemanager.SaveState
 import com.example.bmviewerapp.ui.theme.LightBlue
 import com.example.bmviewerapp.ui.theme.SliderBlue
 import com.example.bmviewerapp.ui.theme.SliderGray
@@ -46,7 +44,12 @@ import com.example.bmviewerapp.ui.theme.SliderThumb
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
+fun EditToolContent(
+    imageUri: Uri,
+    selectedTool: EditTool,
+    saveState: SaveState,
+    onImageChanged: (Bitmap?) -> Unit = {}
+) {
     val bitmapViewModel: BitmapViewModel = viewModel()
     val histogramViewModel: HistogramViewModel = viewModel()
     val filterStateViewModel: FilterStateViewModel = viewModel()
@@ -55,6 +58,10 @@ fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
     val originalBitmap =
         remember { mutableStateOf(bitmapViewModel.parseBmpFromUri(context, imageUri)) }
     val previewBitmap = remember { mutableStateOf(originalBitmap.value) }
+
+    LaunchedEffect(previewBitmap.value) {
+        onImageChanged(previewBitmap.value)
+    }
 
     LaunchedEffect(
         filterStateViewModel.filterParams,
@@ -93,6 +100,7 @@ fun EditToolContent(imageUri: Uri, selectedTool: EditTool) {
                     .clip(shape = RoundedCornerShape(16.dp)),
                 contentScale = ContentScale.FillWidth
             )
+
 
             Spacer(modifier = Modifier.height(16.dp))
 
