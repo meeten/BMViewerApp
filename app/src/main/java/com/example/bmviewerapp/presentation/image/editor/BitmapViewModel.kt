@@ -6,9 +6,19 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.net.Uri
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 
-class BitmapViewModel : ViewModel() {
+class BitmapViewModel() : ViewModel() {
+
+    private var editHalf by mutableStateOf(false)
+
+    fun setEditMode(editHalf: Boolean) {
+        this.editHalf = editHalf
+    }
+
     fun applyAllFilters(
         filterParams: ImageFilterParams,
         originalBitmap: Bitmap
@@ -67,6 +77,11 @@ class BitmapViewModel : ViewModel() {
         )
 
         for (i in 0 until pixels.size) {
+            if (editHalf) {
+                val x = i % originalBitmap.width
+                if (x <= originalBitmap.width / 2) continue
+            }
+
             val alpha = Color.alpha(pixels[i])
             val red = Color.red(pixels[i])
             val green = Color.green(pixels[i])
@@ -109,6 +124,11 @@ class BitmapViewModel : ViewModel() {
         val brightnessFactor = 1.0f + brightness
 
         for (i in 0 until pixels.size) {
+            if (editHalf) {
+                val x = i % originalBitmap.width
+                if (x <= originalBitmap.width / 2) continue
+            }
+
             val alpha = Color.alpha(pixels[i])
             var red = Color.red(pixels[i])
             var green = Color.green(pixels[i])
@@ -151,6 +171,11 @@ class BitmapViewModel : ViewModel() {
         val contrastFactor = contrast * contrast
 
         for (i in 0 until pixels.size) {
+            if (editHalf) {
+                val x = i % originalBitmap.width
+                if (x <= originalBitmap.width / 2) continue
+            }
+
             val alpha = Color.alpha(pixels[i])
             var red = Color.red(pixels[i])
             var green = Color.green(pixels[i])
@@ -186,8 +211,10 @@ class BitmapViewModel : ViewModel() {
         // Фиксированный радиус 2 (матрица 3x3)
         val blurRadius = 2
 
+        val startWithPixelIndex = if (editHalf) result.width / 2 else 0
+
         for (y in 0 until result.height) {
-            for (x in 0 until result.width) {
+            for (x in startWithPixelIndex until result.width) {
                 var totalA = 0
                 var totalR = 0
                 var totalG = 0
@@ -242,8 +269,10 @@ class BitmapViewModel : ViewModel() {
 
         val tempPixels = pixels.copyOf()
 
+        val startWithPixelIndex = if (editHalf) result.width / 2 else 0
+
         for (y in 1 until result.height - 1) {
-            for (x in 1 until result.width - 1) {
+            for (x in startWithPixelIndex + 1 until result.width - 1) {
                 var totalA = 0f
                 var totalR = 0f
                 var totalG = 0f
@@ -294,8 +323,10 @@ class BitmapViewModel : ViewModel() {
 
         val tempPixels = pixels.copyOf()
 
+        val startWithPixelIndex = if (editHalf) result.width / 2 else 0
+
         for (y in 1 until result.height - 1) {
-            for (x in 1 until result.width - 1) {
+            for (x in startWithPixelIndex + 1 until result.width - 1) {
                 var intensity = 0f
 
                 // Считаем только интенсивность (яркость)
@@ -343,8 +374,10 @@ class BitmapViewModel : ViewModel() {
 
         val tempPixels = pixels.copyOf()
 
+        val startWithPixelIndex = if (editHalf) result.width / 2 else 0
+
         for (y in 1 until result.height - 1) {
-            for (x in 1 until result.width - 1) {
+            for (x in startWithPixelIndex + 1 until result.width - 1) {
                 var newR = 0
                 var newG = 0
                 var newB = 0
@@ -394,7 +427,7 @@ class BitmapViewModel : ViewModel() {
         val pixels = IntArray(result.width * result.height)
         result.getPixels(pixels, 0, result.width, 0, 0, result.width, result.height)
 
-        // Создаем таблицу преобразования как в исходнике
+        // Создаем таблицу преобразования
         val rgbTransTable = Array(3) { IntArray(256) }
 
         // Инициализация таблицы преобразования
@@ -419,7 +452,16 @@ class BitmapViewModel : ViewModel() {
             }
         }
 
+        // Применяем коррекцию только к нужным пикселям
         for (i in pixels.indices) {
+            // Если режим "половина" - обрабатываем только правую половину
+            if (editHalf) {
+                val x = i % originalBitmap.width
+                if (x < originalBitmap.width / 2) {
+                    continue // Пропускаем левую половину
+                }
+            }
+
             val alpha = Color.alpha(pixels[i])
             val red = Color.red(pixels[i])
             val green = Color.green(pixels[i])

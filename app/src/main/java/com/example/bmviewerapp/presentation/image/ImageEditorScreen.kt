@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.BottomAppBar
@@ -59,6 +61,7 @@ fun ImageEditorScreen(imageUri: Uri, onBackClickListener: () -> Unit) {
     var isShowMoreBottomMenu by remember { mutableStateOf(false) }
     var isShowMoreTopMenu by remember { mutableStateOf(false) }
     var selectedTool by remember { mutableStateOf(EditTool.HISTOGRAM) }
+    var editHalf by remember { mutableStateOf(false) }
 
     LaunchedEffect(fileManagerViewModel.saveState) {
         when (val state = fileManagerViewModel.saveState) {
@@ -117,7 +120,7 @@ fun ImageEditorScreen(imageUri: Uri, onBackClickListener: () -> Unit) {
                         expanded = isShowMoreTopMenu,
                         onDismissRequest = { isShowMoreTopMenu = false }) {
                         DropdownMenuItem(
-                            text = { Text("Save") },
+                            text = { Text("Save Image") },
                             onClick = {
                                 fileManagerViewModel.saveImageToGallery(
                                     currentBitmap,
@@ -127,6 +130,19 @@ fun ImageEditorScreen(imageUri: Uri, onBackClickListener: () -> Unit) {
                             trailingIcon = {
                                 Icon(
                                     painter = painterResource(R.drawable.save),
+                                    contentDescription = null,
+                                    tint = Color.Black
+                                )
+                            })
+
+                        DropdownMenuItem(
+                            text = { Text("Edit Half") },
+                            onClick = {
+                                editHalf = !editHalf
+                            },
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = if (editHalf) Icons.Filled.Done else Icons.Filled.Close,
                                     contentDescription = null,
                                     tint = Color.Black
                                 )
@@ -216,8 +232,12 @@ fun ImageEditorScreen(imageUri: Uri, onBackClickListener: () -> Unit) {
                     }
             }
 
-            EditToolContent(imageUri, selectedTool, fileManagerViewModel.saveState) {
-                currentBitmap = it
+            EditToolContent(
+                imageUri,
+                selectedTool,
+                editHalf,
+            ) { bitmap ->
+                currentBitmap = bitmap
             }
         }
     }

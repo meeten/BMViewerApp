@@ -2,6 +2,7 @@ package com.example.bmviewerapp.presentation.image.editor
 
 import android.graphics.Bitmap
 import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,7 +37,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bmviewerapp.presentation.image.analysis.AnimatedHistogramView
 import com.example.bmviewerapp.presentation.image.analysis.HistogramViewModel
-import com.example.bmviewerapp.presentation.image.filemanager.SaveState
 import com.example.bmviewerapp.ui.theme.LightBlue
 import com.example.bmviewerapp.ui.theme.SliderBlue
 import com.example.bmviewerapp.ui.theme.SliderGray
@@ -47,7 +47,7 @@ import com.example.bmviewerapp.ui.theme.SliderThumb
 fun EditToolContent(
     imageUri: Uri,
     selectedTool: EditTool,
-    saveState: SaveState,
+    editHalf: Boolean,
     onImageChanged: (Bitmap?) -> Unit = {}
 ) {
     val bitmapViewModel: BitmapViewModel = viewModel()
@@ -58,6 +58,10 @@ fun EditToolContent(
     val originalBitmap =
         remember { mutableStateOf(bitmapViewModel.parseBmpFromUri(context, imageUri)) }
     val previewBitmap = remember { mutableStateOf(originalBitmap.value) }
+
+    LaunchedEffect(editHalf) {
+        bitmapViewModel.setEditMode(editHalf)
+    }
 
     LaunchedEffect(previewBitmap.value) {
         onImageChanged(previewBitmap.value)
