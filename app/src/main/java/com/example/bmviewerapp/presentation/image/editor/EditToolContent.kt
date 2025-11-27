@@ -2,7 +2,6 @@ package com.example.bmviewerapp.presentation.image.editor
 
 import android.graphics.Bitmap
 import android.net.Uri
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,6 +40,9 @@ import com.example.bmviewerapp.ui.theme.LightBlue
 import com.example.bmviewerapp.ui.theme.SliderBlue
 import com.example.bmviewerapp.ui.theme.SliderGray
 import com.example.bmviewerapp.ui.theme.SliderThumb
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,36 +57,97 @@ fun EditToolContent(
     val filterStateViewModel: FilterStateViewModel = viewModel()
     val context = LocalContext.current
 
-    val originalBitmap =
-        remember { mutableStateOf(bitmapViewModel.parseBmpFromUri(context, imageUri)) }
-    val previewBitmap = remember { mutableStateOf(originalBitmap.value) }
+    val originalBitmap = remember { mutableStateOf<Bitmap?>(null) }
+    val previewBitmap = remember { mutableStateOf<Bitmap?>(null) }
+    val fastPreviewBitmap = remember { mutableStateOf<Bitmap?>(null) }
+
+    // Флаг для отслеживания активного изменения слайдера
+    val isSliderChanging = remember { mutableStateOf(false) }
+
+    // Отдельное состояние для быстрого превью во время движения слайдера
+    val fastPreviewResult = remember { mutableStateOf<Bitmap?>(null) }
+
+    // Загружаем оригинал
+    LaunchedEffect(imageUri) {
+        originalBitmap.value = withContext(Dispatchers.IO) {
+            bitmapViewModel.parseBmpFromUri(context, imageUri)
+        }
+        previewBitmap.value = originalBitmap.value
+
+        originalBitmap.value?.let { bitmap ->
+            fastPreviewBitmap.value = bitmapViewModel.createPreviewBitmap(bitmap, scale = 0.3f)
+        }
+    }
 
     LaunchedEffect(editHalf) {
         bitmapViewModel.setEditMode(editHalf)
+    }
+
+    // БЫСТРЫЙ предпросмотр (активен во время движения слайдера)
+    LaunchedEffect(filterStateViewModel.filterParams, fastPreviewBitmap.value, selectedTool) {
+        if (fastPreviewBitmap.value == null) return@LaunchedEffect
+        if (selectedTool != EditTool.BRIGHTNESS && selectedTool != EditTool.HISTOGRAM) return@LaunchedEffect
+
+        // Помечаем, что слайдер изменяется
+        isSliderChanging.value = true
+
+        // Убираем задержку для мгновенного отклика
+        val fastResult = withContext(Dispatchers.IO) {
+            bitmapViewModel.applyAllFilters(
+                filterStateViewModel.filterParams,
+                fastPreviewBitmap.value!!
+            )
+        }
+
+        // Сразу обновляем быстрый превью
+        fastPreviewResult.value = fastResult
+        previewBitmap.value = fastResult
+    }
+
+    // ПОЛНАЯ обработка (после окончания движения слайдера)
+    LaunchedEffect(filterStateViewModel.filterParams, originalBitmap.value) {
+        if (originalBitmap.value == null) return@LaunchedEffect
+
+        // Если слайдер не изменяется, пропускаем полную обработку
+        if (!isSliderChanging.value) return@LaunchedEffect
+
+        // Увеличиваем задержку для определения окончания движения слайдера
+        delay(500) // Ждем, пока пользователь не перестанет двигать слайдер
+
+        // Проверяем, что слайдер все еще не изменяется после задержки
+        if (!isSliderChanging.value) return@LaunchedEffect
+
+        // Если дошли сюда, значит слайдер перестал изменяться
+        isSliderChanging.value = false
+
+        val fullResult = withContext(Dispatchers.IO) {
+            bitmapViewModel.applyAllFilters(
+                filterStateViewModel.filterParams,
+                originalBitmap.value!!
+            )
+        }
+
+        previewBitmap.value = fullResult
+    }
+
+    // Обновляем отображаемое изображение в зависимости от состояния слайдера
+    LaunchedEffect(fastPreviewResult.value, isSliderChanging.value) {
+        if (isSliderChanging.value && fastPreviewResult.value != null) {
+            // Во время движения слайдера показываем быстрый превью
+            previewBitmap.value = fastPreviewResult.value
+        }
     }
 
     LaunchedEffect(previewBitmap.value) {
         onImageChanged(previewBitmap.value)
     }
 
-    LaunchedEffect(
-        filterStateViewModel.filterParams,
-        originalBitmap.value
-    ) {
-        previewBitmap.value = originalBitmap.value?.let { original ->
-            val result = bitmapViewModel.applyAllFilters(
-                filterParams = filterStateViewModel.filterParams,
-                originalBitmap = original
-            )
-
-            result
-        }
-    }
-
     val histogramData = remember { mutableStateOf<List<Int>>(emptyList()) }
     LaunchedEffect(previewBitmap.value) {
         previewBitmap.value?.let { bitmap ->
-            histogramData.value = histogramViewModel.calculateHistogram(bitmap)
+            histogramData.value = withContext(Dispatchers.Default) {
+                histogramViewModel.calculateHistogram(bitmap)
+            }
         }
     }
 
@@ -104,7 +167,6 @@ fun EditToolContent(
                     .clip(shape = RoundedCornerShape(16.dp)),
                 contentScale = ContentScale.FillWidth
             )
-
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -127,6 +189,10 @@ fun EditToolContent(
                             value = filterStateViewModel.filterParams.histogramOffsetTop,
                             onValueChange = {
                                 filterStateViewModel.updateOffsetTop(it)
+                            },
+                            onValueChangeFinished = {
+                                // Принудительно запускаем полную обработку при окончании движения
+                                isSliderChanging.value = false
                             },
                             valueRange = 0f..100f,
                             modifier = Modifier.weight(1f),
@@ -154,7 +220,10 @@ fun EditToolContent(
                             value = filterStateViewModel.filterParams.histogramOffsetBottom,
                             onValueChange = {
                                 filterStateViewModel.updateOffsetBottom(it)
-
+                            },
+                            onValueChangeFinished = {
+                                // Принудительно запускаем полную обработку при окончании движения
+                                isSliderChanging.value = false
                             },
                             valueRange = 0f..100f,
                             modifier = Modifier.weight(1f),
@@ -183,7 +252,13 @@ fun EditToolContent(
                     )
                     Slider(
                         value = filterStateViewModel.filterParams.brightness,
-                        onValueChange = { filterStateViewModel.updateBrightness(it) },
+                        onValueChange = {
+                            filterStateViewModel.updateBrightness(it)
+                            isSliderChanging.value = true
+                        },
+                        onValueChangeFinished = {
+                            isSliderChanging.value = false
+                        },
                         valueRange = -1.0f..1.0f,
                         modifier = Modifier.fillMaxWidth(),
                         colors = SliderDefaults.colors(
@@ -202,7 +277,13 @@ fun EditToolContent(
                     )
                     Slider(
                         value = filterStateViewModel.filterParams.contrast,
-                        onValueChange = { filterStateViewModel.updateContrast(it) },
+                        onValueChange = {
+                            filterStateViewModel.updateContrast(it)
+                            isSliderChanging.value = true
+                        },
+                        onValueChangeFinished = {
+                            isSliderChanging.value = false
+                        },
                         valueRange = 0.5f..2.0f,
                         modifier = Modifier.fillMaxWidth(),
                         colors = SliderDefaults.colors(
@@ -217,22 +298,23 @@ fun EditToolContent(
 
                 EditTool.INVERT_COLORS -> {
                     FilterButton("Invert") {
-                        previewBitmap.value =
-                            bitmapViewModel.invertBitmapColors((originalBitmap.value))
+                        isSliderChanging.value = false
+                        previewBitmap.value = bitmapViewModel.invertBitmapColors((originalBitmap.value))
                         originalBitmap.value = previewBitmap.value
                     }
                 }
 
                 EditTool.SHARP -> {
                     FilterButton("Sharpen") {
-                        previewBitmap.value =
-                            bitmapViewModel.sharpenBitmap(originalBitmap.value)
+                        isSliderChanging.value = false
+                        previewBitmap.value = bitmapViewModel.sharpenBitmap(originalBitmap.value)
                         originalBitmap.value = previewBitmap.value
                     }
                 }
 
                 EditTool.EMBOSS -> {
                     FilterButton("Emboss") {
+                        isSliderChanging.value = false
                         previewBitmap.value = bitmapViewModel.embossBitmap(originalBitmap.value)
                         originalBitmap.value = previewBitmap.value
                     }
@@ -240,16 +322,16 @@ fun EditToolContent(
 
                 EditTool.CONTOUR -> {
                     FilterButton("Contour") {
-                        previewBitmap.value =
-                            bitmapViewModel.contourBitmap(originalBitmap.value)
+                        isSliderChanging.value = false
+                        previewBitmap.value = bitmapViewModel.contourBitmap(originalBitmap.value)
                         originalBitmap.value = previewBitmap.value
                     }
                 }
 
                 EditTool.BLUR -> {
                     FilterButton("Blur") {
-                        previewBitmap.value =
-                            bitmapViewModel.blurBitmap(originalBitmap.value)
+                        isSliderChanging.value = false
+                        previewBitmap.value = bitmapViewModel.blurBitmap(originalBitmap.value)
                         originalBitmap.value = previewBitmap.value
                     }
                 }
@@ -262,6 +344,8 @@ fun EditToolContent(
                 originalBitmap.value = original
                 previewBitmap.value = original
                 filterStateViewModel.resetAll()
+                isSliderChanging.value = false
+                fastPreviewResult.value = null
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = LightBlue)

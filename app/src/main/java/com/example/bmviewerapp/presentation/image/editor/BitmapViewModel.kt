@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.graphics.scale
 import androidx.lifecycle.ViewModel
 
 class BitmapViewModel() : ViewModel() {
@@ -17,6 +18,12 @@ class BitmapViewModel() : ViewModel() {
 
     fun setEditMode(editHalf: Boolean) {
         this.editHalf = editHalf
+    }
+
+    fun createPreviewBitmap(bitmap: Bitmap, scale: Float): Bitmap {
+        val width = (bitmap.width * scale).toInt()
+        val height = (bitmap.height * scale).toInt()
+        return bitmap.scale(width, height)
     }
 
     fun applyAllFilters(
